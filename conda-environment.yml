@@ -1,0 +1,6 @@
+name: biomag2020
+dependencies:
+  - python=3.7.7
+  - pip=20.0.2
+  - ipykernel=5.1.4
+  - jupyter
