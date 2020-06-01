@@ -6,4 +6,4 @@ dependencies:
   - jupyter
   - conda-forge::mne=0.20.5
   - conda-forge::mne-bids
-  - bioconda::snakemake-minimal=5.18.1
+  - bioconda::snakemake-minimal=5.3.0
