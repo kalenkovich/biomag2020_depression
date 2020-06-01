@@ -4,3 +4,5 @@ dependencies:
   - pip=20.0.2
   - ipykernel=5.1.4
   - jupyter
+  - conda-forge::mne=0.20.5
+  - conda-forge::mne-bids
