@@ -7,7 +7,7 @@ import shutil
 
 import mne
 import mne_bids
-from bids import BIDSLayout
+from bids import BIDSLayout, BIDSValidator
 
 
 # # Move one file to BIDS 
@@ -47,8 +47,16 @@ if not output_filepath.exists():
 
 # # Locate files using `pybids`
 
-bids_layout = BIDSLayout(root=bids_root)
+# validate=False because bids-validator fails on Windows
+bids_layout = BIDSLayout(root=bids_root, validate=False)
+bids_layout
 
 
-bids_layout.get()
+# Retrieve filenames of all BOLD runs for subject 01
+json_files = bids_layout.get(return_type='file', suffix='meg', extension='json')
+input_files = [Path(filepath).relative_to(bids_root.resolve()) for filepath in json_files]
+input_files
+
+
+(bids_root / input_files[0]) == input_filepath
 
