@@ -48,7 +48,7 @@ if not output_filepath.exists():
 # # Locate files using `pybids`
 
 # validate=False because bids-validator fails on Windows
-bids_layout = BIDSLayout(root=bids_root, validate=False)
+bids_layout = BIDSLayout(root=bids_root, validate=True)
 bids_layout
 
 
@@ -59,4 +59,10 @@ input_files
 
 
 (bids_root / input_files[0]) == input_filepath
+
+
+output_files = [derivatives_root / input_file for input_file in input_files]
+
+
+output_files
 

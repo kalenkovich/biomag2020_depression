@@ -8,4 +8,4 @@ dependencies:
   - conda-forge::mne-bids
   - bioconda::snakemake-minimal=5.3.0
   - pip:
-    - pybids==0.10.2
+    - git+git://github.com/kalenkovich/pybids.git@kalenkovich_make-_validate_file-work-on-windows#egg=pybids
