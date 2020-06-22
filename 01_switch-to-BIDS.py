@@ -66,3 +66,20 @@ output_files = [derivatives_root / input_file for input_file in input_files]
 
 output_files
 
+
+# # Convert to BIDS (2 sessions)
+
+folders = list(original_data_dir.glob('*.ds'))
+len(folders)
+
+
+for folder in folders[1:4]:
+    raw = mne.io.read_raw_ctf(str(folder))
+    bids_basename = mne_bids.make_bids_basename(
+        subject=raw.info['subject_info']['his_id'],
+        session=str(raw.info['meas_id']['secs']),
+        task='restingstate'
+    )
+
+    mne_bids.write_raw_bids(raw=raw, bids_basename=bids_basename, bids_root=bids_root, verbose=False, overwrite=True) #overwrite doesnt work
+
