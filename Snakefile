@@ -21,7 +21,7 @@ test_pipeline_dir = bids_root / 'derivatives' / 'test_pipeline'
 rule all:
     input:
          expand(os.path.join(test_pipeline_dir, 'sub-{subject}', 'ses-{session}', 'meg',
-                             'sub-{subject}_ses-{session}_task-restingstate_meg.json'), zip, subject=subjects,
+                             'sub-{subject}_ses-{session}_task-restingstate_meg_PSD_raw.png'), zip, subject=subjects,
                 session=sessions),
          expand(os.path.join(test_pipeline_dir, 'sub-{subject}', 'ses-{session}', 'meg',
                      'sub-{subject}_ses-{session}_task-restingstate_meg.fif'), zip, subject=subjects,
@@ -63,4 +63,19 @@ rule draw_raw_psd:
     run:
         raw_path = Path(input[0]).with_suffix('.ds')
         raw = mne.io.read_raw_ctf(str(raw_path), preload=True, verbose=False)
-        raw.plot_psd(show=False).savefig(output[0])
+        p = raw.plot_psd(show=False, fmax=150)
+        p.axes[0].set_ylim(-30, 60)
+        p.savefig(output[0])
+
+rule draw_psd_linearly_filtered:
+    input:
+        os.path.join(test_pipeline_dir, 'sub-{subject}', 'ses-{session}', 'meg',
+                     'sub-{subject}_ses-{session}_task-restingstate_meg.fif')
+    output:
+        os.path.join(test_pipeline_dir, 'sub-{subject}', 'ses-{session}', 'meg',
+                     'sub-{subject}_ses-{session}_task-restingstate_meg_PSD_linearly_filtered.png')
+    run:
+        raw = mne.io.read_raw_fif(input[0], preload=True, verbose=False)
+        p = raw.plot_psd(show=False, fmax=150)
+        p.axes[0].set_ylim(-30, 60)
+        p.savefig(output[0])

@@ -1,0 +1,6 @@
+# Path to bash
+C:\Programs\Anaconda3\Library\bin\bash.exe
+
+# Code changes
+snakemake --snakefile repo/Snakefile --list-code-changes | sed 's|\\|\/|g' > code_changes_list.txt
+snakemake --snakefile repo/Snakefile -R $(cat code_changes_list.txt)
