@@ -43,14 +43,6 @@ rule linear_filtering:
         raw.filter(0.3, None, fir_design='firwin')
         raw.save(output[0])
 
-rule copy_json:
-    input:
-        os.path.join(bids_root, template+'.json')
-    output:
-        os.path.join(test_pipeline_dir, template+'.json')
-    run:
-         shutil.copy(input[0], output[0])
-
 rule draw_raw_psd:
     input:
         os.path.join(bids_root, template+'.json')
