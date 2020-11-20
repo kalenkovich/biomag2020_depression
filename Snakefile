@@ -6,7 +6,7 @@ from pathlib import Path
 
 from bids import BIDSLayout
 
-project_root = Path()
+project_root = Path() / '..'
 original_data_dir = project_root / 'BIOMAG2020_comp_data'
 bids_root = project_root / 'data_bids'
 
