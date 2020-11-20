@@ -62,7 +62,7 @@ rule all:
                 session=sessions),
          expand(os.path.join(test_pipeline_dir, template+'.ics.pickle'), zip, subject=subjects,
                 session=sessions),
-         expand(os.path.join(test_pipeline_dir, template+'_ics_properties.png'), zip, subject=subjects,
+         expand(os.path.join(test_pipeline_dir, template+'_ics_properties.pickle'), zip, subject=subjects,
                 session=sessions),
 
 rule linear_filtering:
@@ -121,13 +121,14 @@ rule find_ics:
         os.path.join(test_pipeline_dir, template+'.ica')
     output:
         os.path.join(test_pipeline_dir, template+'.ics.pickle'),
-        os.path.join(test_pipeline_dir, template+'_ics_properties.png')
+        os.path.join(test_pipeline_dir, template+'_ics_properties.pickle')
     run:
         raw = mne.io.read_raw_fif(input[0], preload=True, verbose=False)
         ica = mne.preprocessing.read_ica(input[1])
         ics = find_ics_iteratively(raw, ica, verbose=False)
         pd.to_pickle(ics, output[0])
         # When ics is empty, plot all components (`ics or None` will evaluate to None)
-        p = ica.plot_properties(raw, picks=(ics or None), show=False)
-        p[0].savefig(output[1])
+        component_figures = ica.plot_properties(raw, picks=(ics or None), show=False)
+        pd.to_pickle(component_figures, output[1])
+        
 
