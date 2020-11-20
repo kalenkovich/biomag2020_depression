@@ -27,6 +27,8 @@ rule all:
                 session=sessions),
          expand(os.path.join(test_pipeline_dir, template+'_PSD_linearly_filtered.png'), zip, subject=subjects,
                 session=sessions),
+         expand(os.path.join(test_pipeline_dir, template+'.ica'), zip, subject=subjects,
+                session=sessions),
 
 rule linear_filtering:
     input:
@@ -65,3 +67,15 @@ rule draw_psd_linearly_filtered:
         p = raw.plot_psd(show=False, fmax=150)
         p.axes[0].set_ylim(-30, 60)
         p.savefig(output[0])
+
+rule fit_ica:
+    input:
+        os.path.join(test_pipeline_dir, template+'.fif')
+    output:
+        os.path.join(test_pipeline_dir, template+'.ica')
+    run:
+        raw = mne.io.read_raw_fif(input[0], preload=True, verbose=False)
+        raw.filter(1, None)
+        ica = mne.preprocessing.ICA(random_state=2, n_components=25, verbose=False)
+        ica.fit(raw)
+        ica.save(output[0])
