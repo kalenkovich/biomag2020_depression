@@ -127,6 +127,7 @@ rule find_ics:
         ica = mne.preprocessing.read_ica(input[1])
         ics = find_ics_iteratively(raw, ica, verbose=False)
         pd.to_pickle(ics, output[0])
-        p = ica.plot_properties(raw, picks=ics, show=False)
+        # When ics is empty, plot all components (`ics or None` will evaluate to None)
+        p = ica.plot_properties(raw, picks=(ics or None), show=False)
         p[0].savefig(output[1])
 
