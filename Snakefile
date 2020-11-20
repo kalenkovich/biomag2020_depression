@@ -64,6 +64,8 @@ rule all:
                 session=sessions),
          expand(os.path.join(test_pipeline_dir, template+'_ics_properties.pickle'), zip, subject=subjects,
                 session=sessions),
+         expand(os.path.join(test_pipeline_dir, template + '-ics-removed.fif'), zip, subject=subjects,
+                session=sessions),
 
 rule linear_filtering:
     input:
@@ -130,5 +132,18 @@ rule find_ics:
         # When ics is empty, plot all components (`ics or None` will evaluate to None)
         component_figures = ica.plot_properties(raw, picks=(ics or None), show=False)
         pd.to_pickle(component_figures, output[1])
-        
 
+rule remove_artifactual_ics:
+    input:
+        os.path.join(test_pipeline_dir, template + '.fif'),
+        os.path.join(test_pipeline_dir, template+'.ica'),
+        os.path.join(test_pipeline_dir, template+'.ics.pickle')
+    output:
+        os.path.join(test_pipeline_dir, template + '-ics-removed.fif')
+    run:
+        raw = mne.io.read_raw_fif(input[0], preload=True, verbose=False)
+        ica = mne.preprocessing.read_ica(input[1])
+        ics = pd.read_pickle(input[2])
+        ica.exclude = ics
+        raw_ics_removed = ica.apply(raw)
+        raw_ics_removed.save(output[0])
