@@ -5,7 +5,8 @@ dependencies:
   - ipykernel=5.1.4
   - jupyter
   - conda-forge::mne=0.20.5
-  - conda-forge::mne-bids
+  - conda-forge::mne-bids=2.2.2
   - bioconda::snakemake-minimal=5.3.0
+  - conda-forge::papermill=
   - pip:
     - git+git://github.com/kalenkovich/pybids.git@kalenkovich_make-_validate_file-work-on-windows#egg=pybids
