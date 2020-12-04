@@ -136,3 +136,13 @@ fit_params: {fit_params}
 random_state: {random_state}
 ''')
 
+
+# ## Session 1
+
+print(f'Identified {len(bad_ics_1)} artifactual components: {bad_ics_1}')
+
+
+# ## Session 2
+
+print(f'Identified {len(bad_ics_2)} artifactual components: {bad_ics_2}')
+
