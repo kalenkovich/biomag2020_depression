@@ -6,6 +6,7 @@ import os
 
 
 from IPython.display import Image
+import pandas as pd
 
 
 import mne
@@ -28,6 +29,14 @@ psd_image_after_1 = session_1 / 'meg' / 'sub-BQBBKEBX_ses-1457629800_task-restin
 filtered_data_2 = session_2 / 'meg' / 'sub-BQBBKEBX_ses-1458832200_task-restingstate_meg.fif'
 psd_image_before_2 = session_2 / 'meg' / 'sub-BQBBKEBX_ses-1458832200_task-restingstate_meg_PSD_raw.png'
 psd_image_after_2 = session_2 / 'meg' / 'sub-BQBBKEBX_ses-1458832200_task-restingstate_meg_PSD_linearly_filtered.png'
+
+ica_object_1 = session_1 / 'meg' / 'sub-BQBBKEBX_ses-1457629800_task-restingstate_meg.ica'
+ica_bad_ics_1 = session_1 / 'meg' / 'sub-BQBBKEBX_ses-1457629800_task-restingstate_meg.ics.pickle'
+ica_figures_1 = session_1 / 'meg' / 'sub-BQBBKEBX_ses-1457629800_task-restingstate_meg_ics_properties.pickle'
+
+ica_object_2 = session_2 / 'meg' / 'sub-BQBBKEBX_ses-1458832200_task-restingstate_meg.ica'
+ica_bad_ics_2 = session_2 / 'meg' / 'sub-BQBBKEBX_ses-1458832200_task-restingstate_meg.ics.pickle'
+ica_figures_2 = session_2 / 'meg' / 'sub-BQBBKEBX_ses-1458832200_task-restingstate_meg_ics_properties.pickle'
 
 
 info_1 = mne.io.read_raw_fif(filtered_data_1, verbose=False).info
@@ -93,3 +102,37 @@ Image(psd_image_after_2)
 
 
 # # ICA
+
+ica_1 = mne.preprocessing.read_ica(ica_object_1, verbose=False)
+bad_ics_1 = pd.read_pickle(ica_bad_ics_1)
+# figures_1 = pd.read_pickle(ica_figures_1)
+
+ica_2 = mne.preprocessing.read_ica(ica_object_2, verbose=False)
+bad_ics_2 = pd.read_pickle(ica_bad_ics_2)
+# figures_2 = pd.read_pickle(ica_figures_2)
+
+
+method = ica_1.method
+n_components = ica_1.n_components
+max_pca_components = ica_1.max_pca_components
+n_pca_components = ica_1.n_pca_components
+fit_params = ica_1.fit_params
+random_state = ica_1.random_state
+
+assert method == ica_2.method
+assert n_components == ica_2.n_components
+assert max_pca_components == ica_2.max_pca_components
+assert n_pca_components == ica_2.n_pca_components
+assert fit_params == ica_2.fit_params
+assert random_state == ica_2.random_state
+
+
+print(f'''ICA parameters:
+method: {method}
+n_components: {n_components}
+max_pca_components: {max_pca_components}
+n_pca_components: {n_pca_components}
+fit_params: {fit_params}
+random_state: {random_state}
+''')
+
