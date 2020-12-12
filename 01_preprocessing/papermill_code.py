@@ -36,9 +36,27 @@ for key in parameters:
     parameters[key] = str(parameters[key])
 
 
+output_notebook = 'report_executed.ipynb'
+
+
 _ = pm.execute_notebook(
     'report.ipynb',
-    'report_executed.ipynb',
-    
+    output_notebook,
+    parameters=parameters
 )
+
+
+import nbconvert
+from nbconvert import HTMLExporter
+
+
+html_exporter = HTMLExporter()
+html_exporter.template_name = 'classic'
+
+
+body, resources = html_exporter.from_file(output_notebook)
+
+
+with Path(output_notebook).with_suffix('.html').open('wt') as f:
+    f.write(body)
 
