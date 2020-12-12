@@ -1,5 +1,4 @@
 import os
-import shutil
 import mne
 import pandas as pd
 from pathlib import Path
@@ -58,6 +57,7 @@ rule all:
                 session=sessions),
          expand(os.path.join(test_pipeline_dir, template + '-ics-removed.fif'), zip, subject=subjects,
                 session=sessions),
+         os.path.join(test_pipeline_dir, 'subject_level_sessions.csv')
 
 rule linear_filtering:
     input:
@@ -139,3 +139,19 @@ rule remove_artifactual_ics:
         ica.exclude = ics
         raw_ics_removed = ica.apply(raw)
         raw_ics_removed.save(output[0])
+
+rule subject_level_sessions:
+    input:
+        expand(os.path.join(bids_root, template+'.json'), zip, subject=subjects,
+               session=sessions)
+    output:
+        os.path.join(test_pipeline_dir, 'subject_level_sessions.csv')
+    run:
+        df = pd.DataFrame(columns=['Subject', 'Sessions'])
+        df['Subject'] = subjects
+        df['Sessions'] = input[0]
+        df_grouped = pd.DataFrame(df.groupby('Subject')['Sessions'].apply(list))
+        df_grouped[['Session 1', 'Session 2']] = pd.DataFrame(df_grouped['Sessions'].tolist(), index=df_grouped.index)
+        df_grouped = df_grouped.drop(columns=['Sessions'])
+        df_grouped.to_csv(output[0])
+        # columns=['Subject ID', 'Session ID', 'File Type' (for example, PSD_raw), 'Path to file']
