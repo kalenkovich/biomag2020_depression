@@ -8,7 +8,7 @@ from bids import BIDSLayout
 
 project_root = Path() / '..'
 original_data_dir = project_root / 'BIOMAG2020_comp_data'
-bids_root = project_root / 'data_bids'
+bids_root = Path(os.environ['biomag2020_data-bids'])
 
 layout = BIDSLayout(bids_root, validate=True)
 
