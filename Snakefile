@@ -142,16 +142,19 @@ rule remove_artifactual_ics:
 
 rule subject_level_sessions:
     input:
-        expand(os.path.join(bids_root, template+'.json'), zip, subject=subjects,
-               session=sessions)
+        #expand(os.path.join(test_pipeline_dir, template+'_ics_properties.png'), zip, subject=subjects,
+        #       session=sessions),
+        expand(os.path.join(test_pipeline_dir, template+'_PSD_linearly_filtered.png'), zip, subject=subjects,
+               session=sessions),
+        expand(os.path.join(test_pipeline_dir, template+'_PSD_raw.png'), zip, subject=subjects,
+               session=sessions),
     output:
         os.path.join(test_pipeline_dir, 'subject_level_sessions.csv')
     run:
-        df = pd.DataFrame(columns=['Subject', 'Sessions'])
-        df['Subject'] = subjects
-        df['Sessions'] = input[0]
-        df_grouped = pd.DataFrame(df.groupby('Subject')['Sessions'].apply(list))
-        df_grouped[['Session 1', 'Session 2']] = pd.DataFrame(df_grouped['Sessions'].tolist(), index=df_grouped.index)
-        df_grouped = df_grouped.drop(columns=['Sessions'])
-        df_grouped.to_csv(output[0])
-        # columns=['Subject ID', 'Session ID', 'File Type' (for example, PSD_raw), 'Path to file']
+        df = pd.DataFrame([[path.rpartition('sub-')[2][:8],
+                            path.rpartition('ses-')[2][:10],
+                            'PSD' if 'PSD' in path else 'ICA',
+                            path] for path in input],
+                          columns=['Subject ID', 'Session ID', 'File Type', 'Path to file'])
+
+        df.to_csv(output[0])
