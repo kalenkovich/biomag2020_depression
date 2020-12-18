@@ -158,3 +158,14 @@ rule subject_level_sessions:
                           columns=['Subject ID', 'Session ID', 'File Type', 'Path to file'])
 
         df.to_csv(output[0])
+
+#
+# rule make_reports:
+#     input:
+#         os.path.join(test_pipeline_dir, 'subject_level_sessions.csv')
+#     output:
+#         expand(os.path.join(test_pipeline_dir, 'sub-{subject}_report.csv'), subject=) #how to make subjects?
+#     run:
+#         files_for_report = pd.read_csv(input[0])
+#         for sub_df, output_i in zip(files_for_report.groupby('Subject'), output):
+#             sub_df.to_csv(output_i)
