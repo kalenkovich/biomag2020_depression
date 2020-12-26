@@ -4,6 +4,7 @@ import mne
 import pandas as pd
 from pathlib import Path
 
+import pandas as pd
 from bids import BIDSLayout
 import numpy as np
 
@@ -16,8 +17,23 @@ layout = BIDSLayout(bids_root, validate=True)
 
 json_files = layout.get(suffix='meg', extension='json')
 
+# Lists for session-level rules
 subjects = [json_file.get_entities()['subject'] for json_file in json_files]
 sessions = [json_file.get_entities()['session'] for json_file in json_files]
+
+# Create lists for subject-level rules
+subjects_df = (
+    pd.DataFrame(dict(subject=subjects, session_id=sessions))
+    .sort_values(by=['subject', 'session_id'])  # otherwise, there is no definitive session 1 and session 2)
+)
+subjects_df['session_number'] = subjects_df.groupby('subject').cumcount() + 1
+# subjects_df looks like this:
+#     subject  session_id  session_number
+# 0  BQBBKEBX  1457629800               1
+# 1  BQBBKEBX  1458832200               2
+# 2  BYADLMJH  1416503760               1
+# 3  BYADLMJH  1417706220               2
+
 
 test_pipeline_dir = bids_root / 'derivatives' / 'test_pipeline'
 template = os.path.join('sub-{subject}', 'ses-{session}', 'meg', 'sub-{subject}_ses-{session}_task-restingstate_meg')
