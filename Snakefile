@@ -3,22 +3,42 @@ import shutil
 import mne
 import pandas as pd
 from pathlib import Path
+import json
 
+import pandas as pd
 from bids import BIDSLayout
+import numpy as np
+
 
 project_root = Path() / '..'
 original_data_dir = project_root / 'BIOMAG2020_comp_data'
-bids_root = project_root / 'data_bids'
+bids_root = Path(os.environ['biomag2020_data-bids'])
 
 layout = BIDSLayout(bids_root, validate=True)
 
 json_files = layout.get(suffix='meg', extension='json')
 
+# Lists for session-level rules
 subjects = [json_file.get_entities()['subject'] for json_file in json_files]
 sessions = [json_file.get_entities()['session'] for json_file in json_files]
 
+# Create lists for subject-level rules
+subjects_df = (
+    pd.DataFrame(dict(subject=subjects, session_id=sessions))
+    .sort_values(by=['subject', 'session_id'])  # otherwise, there is no definitive session 1 and session 2)
+)
+subjects_df['session_number'] = subjects_df.groupby('subject').cumcount() + 1
+# subjects_df looks like this:
+#     subject  session_id  session_number
+# 0  BQBBKEBX  1457629800               1
+# 1  BQBBKEBX  1458832200               2
+# 2  BYADLMJH  1416503760               1
+# 3  BYADLMJH  1417706220               2
+
+
 test_pipeline_dir = bids_root / 'derivatives' / 'test_pipeline'
 template = os.path.join('sub-{subject}', 'ses-{session}', 'meg', 'sub-{subject}_ses-{session}_task-restingstate_meg')
+preprocessing_report_template = os.path.join(test_pipeline_dir, 'sub-{subject}_task-restingstate_fileList.txt')
 
 def find_ics(raw, ica, verbose=False):
     heart_ics, _ = ica.find_bads_ecg(raw, verbose=verbose)
@@ -58,6 +78,7 @@ rule all:
                 session=sessions),
          expand(os.path.join(test_pipeline_dir, template + '-ics-removed.fif'), zip, subject=subjects,
                 session=sessions),
+         expand(preprocessing_report_template, subject=np.unique(subjects)),
 
 rule linear_filtering:
     input:
@@ -139,3 +160,41 @@ rule remove_artifactual_ics:
         ica.exclude = ics
         raw_ics_removed = ica.apply(raw)
         raw_ics_removed.save(output[0])
+
+
+def inputs_for_report(wildcards):
+    subject = wildcards.subject
+
+    session1 = subjects_df.query('subject == @subject and session_number == 1').session_id.values[0]
+    session2 = subjects_df.query('subject == @subject and session_number == 2').session_id.values[0]
+
+    prefix1 = os.path.join(test_pipeline_dir, template.format(subject=subject, session=session1))
+    prefix2 = os.path.join(test_pipeline_dir, template.format(subject=subject, session=session2))
+
+    return dict(
+        filtered_data_1 = prefix1 + '.fif',
+        psd_image_before_1 = prefix1 + '_PSD_raw.png',
+        psd_image_after_1 = prefix1 + '_PSD_linearly_filtered.png',
+
+        filtered_data_2 = prefix2 + '.fif',
+        psd_image_before_2 = prefix2 + '_PSD_raw.png',
+        psd_image_after_2 = prefix2 + '_PSD_linearly_filtered.png',
+
+        ica_object_1 = prefix1 + '.ica',
+        ica_bad_ics_1 = prefix1 + '.ics.pickle',
+        ica_figures_1 = prefix1 + '_ics_properties.pickle',
+
+        ica_object_2 = prefix2 + '.ica',
+        ica_bad_ics_2 = prefix2 + '.ics.pickle',
+        ica_figures_2 = prefix2 + '_ics_properties.pickle'
+    )
+
+
+rule list_subject_files:
+    input:
+        unpack(inputs_for_report)
+    output:
+        file_list = preprocessing_report_template
+    run:
+        with open(output.file_list, 'w') as file:
+            file.write(json.dumps(input))
