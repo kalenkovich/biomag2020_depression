@@ -3,6 +3,7 @@ import shutil
 import mne
 import pandas as pd
 from pathlib import Path
+import json
 
 import pandas as pd
 from bids import BIDSLayout
@@ -172,7 +173,7 @@ def inputs_for_report(wildcards):
 
     return dict(
         filtered_data_1 = prefix1 + '.fif',
-        psd_image_before_1 = '_PSD_raw.png',
+        psd_image_before_1 = prefix1 + '_PSD_raw.png',
         psd_image_after_1 = prefix1 + '_PSD_linearly_filtered.png',
 
         filtered_data_2 = prefix2 + '.fif',
@@ -187,3 +188,13 @@ def inputs_for_report(wildcards):
         ica_bad_ics_2 = prefix2 + '.ics.pickle',
         ica_figures_2 = prefix2 + '_ics_properties.pickle'
     )
+
+
+rule list_subject_files:
+    input:
+        unpack(inputs_for_report)
+    output:
+        file_list = preprocessing_report_template
+    run:
+        with open(output.file_list, 'w') as file:
+            file.write(json.dumps(input))
