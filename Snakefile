@@ -159,3 +159,31 @@ rule remove_artifactual_ics:
         ica.exclude = ics
         raw_ics_removed = ica.apply(raw)
         raw_ics_removed.save(output[0])
+
+
+def inputs_for_report(wildcards):
+    subject = wildcards.subject
+
+    session1 = subjects_df.query('subject == @subject and session_number == 1').session_id.values[0]
+    session2 = subjects_df.query('subject == @subject and session_number == 2').session_id.values[0]
+
+    prefix1 = os.path.join(test_pipeline_dir, template.format(subject=subject, session=session1))
+    prefix2 = os.path.join(test_pipeline_dir, template.format(subject=subject, session=session2))
+
+    return dict(
+        filtered_data_1 = prefix1 + '.fif',
+        psd_image_before_1 = '_PSD_raw.png',
+        psd_image_after_1 = prefix1 + '_PSD_linearly_filtered.png',
+
+        filtered_data_2 = prefix2 + '.fif',
+        psd_image_before_2 = prefix2 + '_PSD_raw.png',
+        psd_image_after_2 = prefix2 + '_PSD_linearly_filtered.png',
+
+        ica_object_1 = prefix1 + '.ica',
+        ica_bad_ics_1 = prefix1 + '.ics.pickle',
+        ica_figures_1 = prefix1 + '_ics_properties.pickle',
+
+        ica_object_2 = prefix2 + '.ica',
+        ica_bad_ics_2 = prefix2 + '.ics.pickle',
+        ica_figures_2 = prefix2 + '_ics_properties.pickle'
+    )
