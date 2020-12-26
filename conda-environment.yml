@@ -3,7 +3,8 @@ dependencies:
   - python=3.7.7
   - pip=20.0.2
   - ipykernel=5.1.4
-  - jupyter
+  - jupyter=1.0.0
+  - jupyter_client=6.1.6
   - conda-forge::mne=0.20.5
   - conda-forge::mne-bids=0.4
   - bioconda::snakemake-minimal=5.3.0
