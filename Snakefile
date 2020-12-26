@@ -5,6 +5,8 @@ import pandas as pd
 from pathlib import Path
 
 from bids import BIDSLayout
+import numpy as np
+
 
 project_root = Path() / '..'
 original_data_dir = project_root / 'BIOMAG2020_comp_data'
@@ -19,6 +21,7 @@ sessions = [json_file.get_entities()['session'] for json_file in json_files]
 
 test_pipeline_dir = bids_root / 'derivatives' / 'test_pipeline'
 template = os.path.join('sub-{subject}', 'ses-{session}', 'meg', 'sub-{subject}_ses-{session}_task-restingstate_meg')
+preprocessing_report_template = os.path.join(test_pipeline_dir, 'sub-{subject}_task-restingstate_fileList.txt')
 
 def find_ics(raw, ica, verbose=False):
     heart_ics, _ = ica.find_bads_ecg(raw, verbose=verbose)
@@ -58,6 +61,7 @@ rule all:
                 session=sessions),
          expand(os.path.join(test_pipeline_dir, template + '-ics-removed.fif'), zip, subject=subjects,
                 session=sessions),
+         expand(preprocessing_report_template, subject=np.unique(subjects)),
 
 rule linear_filtering:
     input:
