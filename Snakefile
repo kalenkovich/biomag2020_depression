@@ -8,6 +8,7 @@ import pandas as pd
 import papermill as pm
 from bids import BIDSLayout
 from nbconvert import HTMLExporter
+import yaml
 
 project_root = Path() / '..'
 original_data_dir = project_root / 'BIOMAG2020_comp_data'
@@ -38,7 +39,7 @@ subjects_df['session_number'] = subjects_df.groupby('subject').cumcount() + 1
 derivatives_dir = bids_root / 'derivatives'
 test_pipeline_dir = derivatives_dir / 'test_pipeline'
 template = os.path.join('sub-{subject}', 'ses-{session}', 'meg', 'sub-{subject}_ses-{session}_task-restingstate_meg')
-preprocessing_report_template = os.path.join(test_pipeline_dir, 'sub-{subject}_task-restingstate')
+preprocessing_report_template = os.path.join(test_pipeline_dir, 'sub-{subject}_task-restingstate_fileList.txt')
 
 ek_pipeline_dir = derivatives_dir / 'test_pipeline_ek'
 manual_check_template = os.path.join(ek_pipeline_dir, 'sub-{subject}_task-restingstate_manualCheck.yml')
@@ -74,16 +75,30 @@ def find_ics_iteratively(raw, ica, verbose=False):
 
     return ics
 
+
+def is_report_ok(check_result_path):
+    with open(check_result_path) as f:
+        check_result = yaml.full_load(f)
+
+    # There must be exactly one key
+    assert list(check_result.keys()) == ['success']
+    # And it must be either True or False
+    assert check_result['success'] is True or check_result['success'] is False
+
+    return check_result['success']
+
+
 rule all:
     input:
-         expand(os.path.join(test_pipeline_dir, template+'_PSD_raw.png'), zip, subject=subjects,
-                session=sessions),
-         expand(os.path.join(test_pipeline_dir, template+'_PSD_linearly_filtered.png'), zip, subject=subjects,
-                session=sessions),
-         expand(os.path.join(test_pipeline_dir, template + '-ics-removed.fif'), zip, subject=subjects,
-                session=sessions),
-         expand(preprocessing_report_template + '_preproc_report.html', zip, subject=np.unique(subjects)),
-         expand(manual_check_template, subject=np.unique(subjects)),
+        expand(manual_check_template, subject=np.unique(subjects)),
+    output:
+        os.path.join(ek_pipeline_dir, 'preprocessing-report_all.txt')
+    run:
+        n_successes = sum(is_report_ok(check_result_path) for check_result_path in input)
+        with open(output[0], 'w') as f:
+            f.write(f'Files from {len(input)} participants were processed.\n')
+            f.write(f'From {n_successes} of them - successfully.\n')
+
 
 rule linear_filtering:
     input:
