@@ -7,6 +7,7 @@ import numpy as np
 import pandas as pd
 import papermill as pm
 from bids import BIDSLayout
+import bids
 from nbconvert import HTMLExporter
 import yaml
 
@@ -98,10 +99,23 @@ rule all:
     output:
         os.path.join(ek_pipeline_dir, 'preprocessing-report_all.txt')
     run:
-        n_successes = sum(is_report_ok(check_result_path) for check_result_path in input)
+        n_successes = 0
+        problematic_subjects = list()
+        for check_result_path in input:
+            report_ok = is_report_ok(check_result_path)
+            n_successes += report_ok
+            if not report_ok:
+                path_parsed = bids.layout.parse_file_entities(check_result_path)
+                problematic_subjects.append(path_parsed['subject'])
+
         with open(output[0], 'w') as f:
             f.write(f'Files from {len(input)} participants were processed.\n')
             f.write(f'From {n_successes} of them - successfully.\n')
+            f.write('\n')
+
+            f.write('Problematic subjects:\n')
+            for problematic_subject in problematic_subjects:
+                f.write(problematic_subject + '\n')
 
 
 rule linear_filtering:
