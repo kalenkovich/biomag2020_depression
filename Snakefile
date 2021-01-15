@@ -77,7 +77,6 @@ rule all:
                 session=sessions),
          expand(os.path.join(test_pipeline_dir, template + '-ics-removed.fif'), zip, subject=subjects,
                 session=sessions),
-         expand(preprocessing_report_template + '_fileList.txt', zip, subject=np.unique(subjects)),
          expand(preprocessing_report_template + '_preproc_report.html', zip, subject=np.unique(subjects)),
 
 rule linear_filtering:
@@ -188,16 +187,6 @@ def inputs_for_report(wildcards):
         ica_bad_ics_2 = prefix2 + '.ics.pickle',
         ica_figures_2 = prefix2 + '_ics_properties.pickle'
     )
-
-
-rule list_subject_files:
-    input:
-        unpack(inputs_for_report)
-    output:
-        file_list = preprocessing_report_template + '_fileList.txt'
-    run:
-        with open(output.file_list, 'w') as file:
-            file.write(json.dumps(input))
 
 
 rule make_preproc_report:
