@@ -37,7 +37,7 @@ subjects_df['session_number'] = subjects_df.groupby('subject').cumcount() + 1
 
 test_pipeline_dir = bids_root / 'derivatives' / 'test_pipeline'
 template = os.path.join('sub-{subject}', 'ses-{session}', 'meg', 'sub-{subject}_ses-{session}_task-restingstate_meg')
-preprocessing_report_template = os.path.join(test_pipeline_dir, 'sub-{subject}_task-restingstate_fileList.txt')
+preprocessing_report_template = os.path.join(test_pipeline_dir, 'sub-{subject}_task-restingstate')
 
 def find_ics(raw, ica, verbose=False):
     heart_ics, _ = ica.find_bads_ecg(raw, verbose=verbose)
@@ -193,7 +193,7 @@ rule list_subject_files:
     input:
         unpack(inputs_for_report)
     output:
-        file_list = preprocessing_report_template
+        file_list = preprocessing_report_template + '_fileList.txt'
     run:
         with open(output.file_list, 'w') as file:
             file.write(json.dumps(input))
