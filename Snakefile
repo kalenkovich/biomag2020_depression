@@ -196,16 +196,20 @@ rule make_preproc_report:
         preprocessing_report_template + '_preproc_report.html'
     run:
         # create ipynb
+        ipynb_path = Path(output[0]).with_suffix('.ipynb')
         _ = pm.execute_notebook(
             '01_preprocessing\\report.ipynb',
-            Path(output[0]).with_suffix('.ipynb'),
+            ipynb_path,
             parameters=input
         )
 
         # convert to HTML
         html_exporter = HTMLExporter()
         html_exporter.template_name = 'classic'
-        body, resources = html_exporter.from_file(Path(output[0]).with_suffix('.ipynb'))
+        body, resources = html_exporter.from_file(ipynb_path)
 
         with Path(output[0]).open('wt') as f:
             f.write(body)
+
+        # remove ipynb
+        os.remove(str(ipynb_path))
