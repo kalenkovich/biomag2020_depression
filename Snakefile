@@ -1,14 +1,13 @@
-import os
-import shutil
-import mne
-import pandas as pd
-from pathlib import Path
 import json
+import os
+from pathlib import Path
 
-import pandas as pd
-from bids import BIDSLayout
+import mne
 import numpy as np
-
+import pandas as pd
+import papermill as pm
+from bids import BIDSLayout
+from nbconvert import HTMLExporter
 
 project_root = Path() / '..'
 original_data_dir = project_root / 'BIOMAG2020_comp_data'
@@ -38,7 +37,7 @@ subjects_df['session_number'] = subjects_df.groupby('subject').cumcount() + 1
 
 test_pipeline_dir = bids_root / 'derivatives' / 'test_pipeline'
 template = os.path.join('sub-{subject}', 'ses-{session}', 'meg', 'sub-{subject}_ses-{session}_task-restingstate_meg')
-preprocessing_report_template = os.path.join(test_pipeline_dir, 'sub-{subject}_task-restingstate_fileList.txt')
+preprocessing_report_template = os.path.join(test_pipeline_dir, 'sub-{subject}_task-restingstate')
 
 def find_ics(raw, ica, verbose=False):
     heart_ics, _ = ica.find_bads_ecg(raw, verbose=verbose)
@@ -78,7 +77,7 @@ rule all:
                 session=sessions),
          expand(os.path.join(test_pipeline_dir, template + '-ics-removed.fif'), zip, subject=subjects,
                 session=sessions),
-         expand(preprocessing_report_template, subject=np.unique(subjects)),
+         expand(preprocessing_report_template + '_preproc_report.html', zip, subject=np.unique(subjects)),
 
 rule linear_filtering:
     input:
@@ -190,11 +189,27 @@ def inputs_for_report(wildcards):
     )
 
 
-rule list_subject_files:
+rule make_preproc_report:
     input:
         unpack(inputs_for_report)
     output:
-        file_list = preprocessing_report_template
+        preprocessing_report_template + '_preproc_report.html'
     run:
-        with open(output.file_list, 'w') as file:
-            file.write(json.dumps(input))
+        # create ipynb
+        ipynb_path = Path(output[0]).with_suffix('.ipynb')
+        _ = pm.execute_notebook(
+            os.path.join('01_preprocessing', 'report.ipynb'),
+            ipynb_path,
+            parameters=input
+        )
+
+        # convert to HTML
+        html_exporter = HTMLExporter()
+        html_exporter.template_name = 'classic'
+        body, resources = html_exporter.from_file(ipynb_path)
+
+        with Path(output[0]).open('wt') as f:
+            f.write(body)
+
+        # remove ipynb
+        os.remove(str(ipynb_path))
