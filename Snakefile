@@ -81,9 +81,13 @@ def is_report_ok(check_result_path):
         check_result = yaml.full_load(f)
 
     # There must be exactly one key
-    assert list(check_result.keys()) == ['success']
+    assert list(check_result.keys()) == ['success'], '\n'.join([
+        'Problem with {file}'.format(file=check_result_path),
+        'Manual-check files must contain exactly one key - `success`'])
     # And it must be either True or False
-    assert check_result['success'] is True or check_result['success'] is False
+    assert check_result['success'] is True or check_result['success'] is False, '\n'.join([
+        'Problem with {file}'.format(file=check_result_path),
+        '`success` can only be yes or no'])
 
     return check_result['success']
 
