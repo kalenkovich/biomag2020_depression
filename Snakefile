@@ -77,7 +77,8 @@ rule all:
                 session=sessions),
          expand(os.path.join(test_pipeline_dir, template + '-ics-removed.fif'), zip, subject=subjects,
                 session=sessions),
-         expand(preprocessing_report_template, subject=np.unique(subjects)),
+         expand(preprocessing_report_template + '_fileList.txt', zip, subject=np.unique(subjects)),
+         expand(preprocessing_report_template + '_preproc_report.html', zip, subject=np.unique(subjects)),
 
 rule linear_filtering:
     input:
@@ -197,3 +198,25 @@ rule list_subject_files:
     run:
         with open(output.file_list, 'w') as file:
             file.write(json.dumps(input))
+
+
+rule make_preproc_report:
+    input:
+        unpack(inputs_for_report)
+    output:
+        preprocessing_report_template + '_preproc_report.html'
+    run:
+        # create ipynb
+        _ = pm.execute_notebook(
+            '01_preprocessing\\report.ipynb',
+            Path(output[0]).with_suffix('.ipynb'),
+            parameters=input
+        )
+
+        # convert to HTML
+        html_exporter = HTMLExporter()
+        html_exporter.template_name = 'classic'
+        body, resources = html_exporter.from_file(Path(output[0]).with_suffix('.ipynb'))
+
+        with Path(output[0]).open('wt') as f:
+            f.write(body)
