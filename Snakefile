@@ -7,6 +7,7 @@ import numpy as np
 import pandas as pd
 import papermill as pm
 from bids import BIDSLayout
+from nbconvert import HTMLExporter
 
 project_root = Path() / '..'
 original_data_dir = project_root / 'BIOMAG2020_comp_data'
