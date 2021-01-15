@@ -198,7 +198,7 @@ rule make_preproc_report:
         # create ipynb
         ipynb_path = Path(output[0]).with_suffix('.ipynb')
         _ = pm.execute_notebook(
-            '01_preprocessing\\report.ipynb',
+            os.path.join('01_preprocessing', 'report.ipynb'),
             ipynb_path,
             parameters=input
         )
