@@ -1,14 +1,12 @@
-import os
-import shutil
-import mne
-import pandas as pd
-from pathlib import Path
 import json
+import os
+from pathlib import Path
 
-import pandas as pd
-from bids import BIDSLayout
+import mne
 import numpy as np
-
+import pandas as pd
+import papermill as pm
+from bids import BIDSLayout
 
 project_root = Path() / '..'
 original_data_dir = project_root / 'BIOMAG2020_comp_data'
