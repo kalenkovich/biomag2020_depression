@@ -35,9 +35,14 @@ subjects_df['session_number'] = subjects_df.groupby('subject').cumcount() + 1
 # 3  BYADLMJH  1417706220               2
 
 
-test_pipeline_dir = bids_root / 'derivatives' / 'test_pipeline'
+derivatives_dir = bids_root / 'derivatives'
+test_pipeline_dir = derivatives_dir / 'test_pipeline'
 template = os.path.join('sub-{subject}', 'ses-{session}', 'meg', 'sub-{subject}_ses-{session}_task-restingstate_meg')
 preprocessing_report_template = os.path.join(test_pipeline_dir, 'sub-{subject}_task-restingstate')
+
+ek_pipeline_dir = derivatives_dir / 'test_pipeline_ek'
+manual_check_template = os.path.join(ek_pipeline_dir, 'sub-{subject}_task-restingstate_manualCheck.yml')
+
 
 def find_ics(raw, ica, verbose=False):
     heart_ics, _ = ica.find_bads_ecg(raw, verbose=verbose)
@@ -78,6 +83,7 @@ rule all:
          expand(os.path.join(test_pipeline_dir, template + '-ics-removed.fif'), zip, subject=subjects,
                 session=sessions),
          expand(preprocessing_report_template + '_preproc_report.html', zip, subject=np.unique(subjects)),
+         expand(manual_check_template, subject=np.unique(subjects)),
 
 rule linear_filtering:
     input:
@@ -213,3 +219,12 @@ rule make_preproc_report:
 
         # remove ipynb
         os.remove(str(ipynb_path))
+
+
+rule manual_checks_done:
+    input:
+        file_list = rules.make_preproc_report.output[0]
+    output:
+        manual_check = manual_check_template
+    run:
+        pass
