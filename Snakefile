@@ -7,7 +7,9 @@ import numpy as np
 import pandas as pd
 import papermill as pm
 from bids import BIDSLayout
+import bids
 from nbconvert import HTMLExporter
+import yaml
 
 project_root = Path() / '..'
 original_data_dir = project_root / 'BIOMAG2020_comp_data'
@@ -35,9 +37,14 @@ subjects_df['session_number'] = subjects_df.groupby('subject').cumcount() + 1
 # 3  BYADLMJH  1417706220               2
 
 
-test_pipeline_dir = bids_root / 'derivatives' / 'test_pipeline'
+derivatives_dir = bids_root / 'derivatives'
+test_pipeline_dir = derivatives_dir / 'test_pipeline'
 template = os.path.join('sub-{subject}', 'ses-{session}', 'meg', 'sub-{subject}_ses-{session}_task-restingstate_meg')
 preprocessing_report_template = os.path.join(test_pipeline_dir, 'sub-{subject}_task-restingstate')
+
+ek_pipeline_dir = derivatives_dir / 'test_pipeline_ek'
+manual_check_template = os.path.join(ek_pipeline_dir, 'sub-{subject}_task-restingstate_manualCheck.yml')
+
 
 def find_ics(raw, ica, verbose=False):
     heart_ics, _ = ica.find_bads_ecg(raw, verbose=verbose)
@@ -69,15 +76,50 @@ def find_ics_iteratively(raw, ica, verbose=False):
 
     return ics
 
+
+def is_report_ok(check_result_path):
+    with open(check_result_path) as f:
+        check_result = yaml.full_load(f)
+
+    # There must be exactly one key
+    assert list(check_result.keys()) == ['success'], '\n'.join([
+        'Problem with {file}'.format(file=check_result_path),
+        'Manual-check files must contain exactly one key - `success`'])
+    # And it must be either True or False
+    assert check_result['success'] is True or check_result['success'] is False, '\n'.join([
+        'Problem with {file}'.format(file=check_result_path),
+        '`success` can only be yes or no'])
+
+    return check_result['success']
+
+
 rule all:
     input:
-         expand(os.path.join(test_pipeline_dir, template+'_PSD_raw.png'), zip, subject=subjects,
-                session=sessions),
-         expand(os.path.join(test_pipeline_dir, template+'_PSD_linearly_filtered.png'), zip, subject=subjects,
-                session=sessions),
-         expand(os.path.join(test_pipeline_dir, template + '-ics-removed.fif'), zip, subject=subjects,
-                session=sessions),
-         expand(preprocessing_report_template + '_preproc_report.html', zip, subject=np.unique(subjects)),
+        expand(manual_check_template, subject=np.unique(subjects)),
+    output:
+        os.path.join(ek_pipeline_dir, 'preprocessing-report_all.txt')
+    run:
+        n_successes = 0
+        problematic_subjects = list()
+        for check_result_path in input:
+            report_ok = is_report_ok(check_result_path)
+            n_successes += report_ok
+            if not report_ok:
+                path_parsed = bids.layout.parse_file_entities(check_result_path)
+                problematic_subjects.append(path_parsed['subject'])
+
+        with open(output[0], 'w') as f:
+            f.write(f'Files from {len(input)} participants were processed.\n')
+            f.write(f'From {n_successes} of them - successfully.\n')
+            f.write('\n')
+
+            if len(problematic_subjects) > 0:
+                f.write('Problematic subjects:\n')
+                for problematic_subject in problematic_subjects:
+                    f.write(problematic_subject + '\n')
+            else:
+                f.write('No problematic subjects.')
+
 
 rule linear_filtering:
     input:
@@ -213,3 +255,14 @@ rule make_preproc_report:
 
         # remove ipynb
         os.remove(str(ipynb_path))
+
+
+rule manual_checks_done:
+    input:
+        file_list = rules.make_preproc_report.output[0]
+    output:
+        manual_check = manual_check_template
+    run:
+        raise ValueError('Error! Preprocessing report file does not exist!\n'
+                          'Create the manualCheck file manually\n'
+                          f'File: {output}\n')
