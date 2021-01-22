@@ -40,7 +40,7 @@ subjects_df['session_number'] = subjects_df.groupby('subject').cumcount() + 1
 derivatives_dir = bids_root / 'derivatives'
 test_pipeline_dir = derivatives_dir / 'test_pipeline'
 template = os.path.join('sub-{subject}', 'ses-{session}', 'meg', 'sub-{subject}_ses-{session}_task-restingstate_meg')
-preprocessing_report_template = os.path.join(test_pipeline_dir, 'sub-{subject}_task-restingstate_fileList.txt')
+preprocessing_report_template = os.path.join(test_pipeline_dir, 'sub-{subject}_task-restingstate')
 
 ek_pipeline_dir = derivatives_dir / 'test_pipeline_ek'
 manual_check_template = os.path.join(ek_pipeline_dir, 'sub-{subject}_task-restingstate_manualCheck.yml')
@@ -113,9 +113,12 @@ rule all:
             f.write(f'From {n_successes} of them - successfully.\n')
             f.write('\n')
 
-            f.write('Problematic subjects:\n')
-            for problematic_subject in problematic_subjects:
-                f.write(problematic_subject + '\n')
+            if len(problematic_subjects) > 0:
+                f.write('Problematic subjects:\n')
+                for problematic_subject in problematic_subjects:
+                    f.write(problematic_subject + '\n')
+            else:
+                f.write('No problematic subjects.')
 
 
 rule linear_filtering:
@@ -260,4 +263,6 @@ rule manual_checks_done:
     output:
         manual_check = manual_check_template
     run:
-        pass
+        raise ValueError('Error! Preprocessing report file does not exist!\n'
+                          'Create the manualCheck file manually\n'
+                          f'File: {output}\n')
