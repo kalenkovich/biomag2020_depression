@@ -1,15 +1,14 @@
-import json
 import os
 from pathlib import Path
 
+import bids
 import mne
 import numpy as np
 import pandas as pd
 import papermill as pm
-from bids import BIDSLayout
-import bids
-from nbconvert import HTMLExporter
 import yaml
+from bids import BIDSLayout
+from nbconvert import HTMLExporter
 
 project_root = Path() / '..'
 original_data_dir = project_root / 'BIOMAG2020_comp_data'
@@ -35,15 +34,14 @@ subjects_df['session_number'] = subjects_df.groupby('subject').cumcount() + 1
 # 1  BQBBKEBX  1458832200               2
 # 2  BYADLMJH  1416503760               1
 # 3  BYADLMJH  1417706220               2
-
+# ...
 
 derivatives_dir = bids_root / 'derivatives'
-test_pipeline_dir = derivatives_dir / 'test_pipeline'
+preprocessing_pipeline_dir = derivatives_dir / '01_preprocessing'
 template = os.path.join('sub-{subject}', 'ses-{session}', 'meg', 'sub-{subject}_ses-{session}_task-restingstate_meg')
-preprocessing_report_template = os.path.join(test_pipeline_dir, 'sub-{subject}_task-restingstate')
+preprocessing_report_template = os.path.join(preprocessing_pipeline_dir, 'sub-{subject}_task-restingstate')
 
-ek_pipeline_dir = derivatives_dir / 'test_pipeline_ek'
-manual_check_template = os.path.join(ek_pipeline_dir, 'sub-{subject}_task-restingstate_manualCheck.yml')
+manual_check_template = os.path.join(preprocessing_pipeline_dir, 'sub-{subject}_task-restingstate_manualCheck.yml')
 
 
 def find_ics(raw, ica, verbose=False):
@@ -96,8 +94,9 @@ def is_report_ok(check_result_path):
 rule all:
     input:
         expand(manual_check_template, subject=np.unique(subjects)),
+        expand(os.path.join(preprocessing_pipeline_dir, template + '-ics-removed.fif'), zip, subject=subjects, session=sessions)
     output:
-        os.path.join(ek_pipeline_dir, 'preprocessing-report_all.txt')
+        os.path.join(preprocessing_pipeline_dir, 'preprocessing-report_all.txt')
     run:
         n_successes = 0
         problematic_subjects = list()
@@ -125,7 +124,7 @@ rule linear_filtering:
     input:
         os.path.join(bids_root, template+'.json')
     output:
-        os.path.join(test_pipeline_dir, template+'.fif')
+        os.path.join(preprocessing_pipeline_dir, template + '.fif')
     run:
         raw_path = Path(input[0]).with_suffix('.ds')
         raw: mne.io.ctf.ctf.RawCTF = mne.io.read_raw_ctf(str(raw_path), preload=True, verbose=False)
@@ -140,7 +139,7 @@ rule draw_raw_psd:
     input:
         os.path.join(bids_root, template+'.json')
     output:
-        os.path.join(test_pipeline_dir, template+'_PSD_raw.png')
+        os.path.join(preprocessing_pipeline_dir, template + '_PSD_raw.png')
     run:
         raw_path = Path(input[0]).with_suffix('.ds')
         raw = mne.io.read_raw_ctf(str(raw_path), preload=True, verbose=False)
@@ -150,9 +149,9 @@ rule draw_raw_psd:
 
 rule draw_psd_linearly_filtered:
     input:
-        os.path.join(test_pipeline_dir, template+'.fif')
+        os.path.join(preprocessing_pipeline_dir, template + '.fif')
     output:
-        os.path.join(test_pipeline_dir, template+'_PSD_linearly_filtered.png')
+        os.path.join(preprocessing_pipeline_dir, template + '_PSD_linearly_filtered.png')
     run:
         raw = mne.io.read_raw_fif(input[0], preload=True, verbose=False)
         p = raw.plot_psd(show=False, fmax=150)
@@ -161,9 +160,9 @@ rule draw_psd_linearly_filtered:
 
 rule fit_ica:
     input:
-        os.path.join(test_pipeline_dir, template+'.fif')
+        os.path.join(preprocessing_pipeline_dir, template + '.fif')
     output:
-        os.path.join(test_pipeline_dir, template+'.ica')
+        os.path.join(preprocessing_pipeline_dir, template + '.ica')
     run:
         raw = mne.io.read_raw_fif(input[0], preload=True, verbose=False)
         raw.filter(1, None)
@@ -173,11 +172,11 @@ rule fit_ica:
 
 rule find_ics:
     input:
-        os.path.join(test_pipeline_dir, template+'.fif'),
-        os.path.join(test_pipeline_dir, template+'.ica')
+        os.path.join(preprocessing_pipeline_dir, template + '.fif'),
+        os.path.join(preprocessing_pipeline_dir, template + '.ica')
     output:
-        os.path.join(test_pipeline_dir, template+'.ics.pickle'),
-        os.path.join(test_pipeline_dir, template+'_ics_properties.pickle')
+        os.path.join(preprocessing_pipeline_dir, template + '.ics.pickle'),
+        os.path.join(preprocessing_pipeline_dir, template + '_ics_properties.pickle')
     run:
         raw = mne.io.read_raw_fif(input[0], preload=True, verbose=False)
         ica = mne.preprocessing.read_ica(input[1])
@@ -189,11 +188,11 @@ rule find_ics:
 
 rule remove_artifactual_ics:
     input:
-        os.path.join(test_pipeline_dir, template + '.fif'),
-        os.path.join(test_pipeline_dir, template+'.ica'),
-        os.path.join(test_pipeline_dir, template+'.ics.pickle')
+        os.path.join(preprocessing_pipeline_dir, template + '.fif'),
+         os.path.join(preprocessing_pipeline_dir, template + '.ica'),
+         os.path.join(preprocessing_pipeline_dir, template + '.ics.pickle')
     output:
-        os.path.join(test_pipeline_dir, template + '-ics-removed.fif')
+        os.path.join(preprocessing_pipeline_dir, template + '-ics-removed.fif')
     run:
         raw = mne.io.read_raw_fif(input[0], preload=True, verbose=False)
         ica = mne.preprocessing.read_ica(input[1])
@@ -209,8 +208,8 @@ def inputs_for_report(wildcards):
     session1 = subjects_df.query('subject == @subject and session_number == 1').session_id.values[0]
     session2 = subjects_df.query('subject == @subject and session_number == 2').session_id.values[0]
 
-    prefix1 = os.path.join(test_pipeline_dir, template.format(subject=subject, session=session1))
-    prefix2 = os.path.join(test_pipeline_dir, template.format(subject=subject, session=session2))
+    prefix1 = os.path.join(preprocessing_pipeline_dir, template.format(subject=subject, session=session1))
+    prefix2 = os.path.join(preprocessing_pipeline_dir, template.format(subject=subject, session=session2))
 
     return dict(
         filtered_data_1 = prefix1 + '.fif',
@@ -242,7 +241,7 @@ rule make_preproc_report:
         _ = pm.execute_notebook(
             os.path.join('01_preprocessing', 'report.ipynb'),
             ipynb_path,
-            parameters=input
+            parameters=input,
         )
 
         # convert to HTML
