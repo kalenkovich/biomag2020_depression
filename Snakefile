@@ -101,35 +101,6 @@ common_channels_path = os.path.join(preprocessing_pipeline_dir, 'common_channels
 
 rule all:
     input:
-<<<<<<< HEAD
-        expand(manual_check_template, subject=np.unique(subjects)),
-        expand(os.path.join(preprocessing_pipeline_dir, template + '-ics-removed.fif'),
-               zip, subject=subjects, session=sessions),
-        common_channels_path
-    output:
-        os.path.join(preprocessing_pipeline_dir, 'preprocessing-report_all.txt')
-    run:
-        n_successes = 0
-        problematic_subjects = list()
-        for check_result_path in input:
-            report_ok = is_report_ok(check_result_path)
-            n_successes += report_ok
-            if not report_ok:
-                path_parsed = bids.layout.parse_file_entities(check_result_path)
-                problematic_subjects.append(path_parsed['subject'])
-
-        with open(output[0], 'w') as f:
-            f.write(f'Files from {len(input)} participants were processed.\n')
-            f.write(f'From {n_successes} of them - successfully.\n')
-            f.write('\n')
-
-            if len(problematic_subjects) > 0:
-                f.write('Problematic subjects:\n')
-                for problematic_subject in problematic_subjects:
-                    f.write(problematic_subject + '\n')
-            else:
-                f.write('No problematic subjects.')
-=======
         # expand(manual_check_template, subject=np.unique(subjects)),
         expand(os.path.join(preprocessing_pipeline_dir, template + '-ics-removed.fif'), zip, subject=subjects, session=sessions),
         expand(eigenvalues_template, zip, subject=subjects, session=sessions)
@@ -156,7 +127,6 @@ rule all:
     #                 f.write(problematic_subject + '\n')
     #         else:
     #             f.write('No problematic subjects.')
->>>>>>> calculated eigenvalues
 
 
 linearly_filtered_template = os.path.join(preprocessing_pipeline_dir, template + '.fif')
