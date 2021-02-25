@@ -91,10 +91,15 @@ def is_report_ok(check_result_path):
     return check_result['success']
 
 
+common_channels_path = os.path.join(preprocessing_pipeline_dir, 'common_channels.csv')
+
+
 rule all:
     input:
         expand(manual_check_template, subject=np.unique(subjects)),
-        expand(os.path.join(preprocessing_pipeline_dir, template + '-ics-removed.fif'), zip, subject=subjects, session=sessions)
+        expand(os.path.join(preprocessing_pipeline_dir, template + '-ics-removed.fif'),
+               zip, subject=subjects, session=sessions),
+        common_channels_path
     output:
         os.path.join(preprocessing_pipeline_dir, 'preprocessing-report_all.txt')
     run:
@@ -120,11 +125,14 @@ rule all:
                 f.write('No problematic subjects.')
 
 
+linearly_filtered_template = os.path.join(preprocessing_pipeline_dir, template + '.fif')
+
+
 rule linear_filtering:
     input:
         os.path.join(bids_root, template+'.json')
     output:
-        os.path.join(preprocessing_pipeline_dir, template + '.fif')
+        linearly_filtered_template
     run:
         raw_path = Path(input[0]).with_suffix('.ds')
         raw: mne.io.ctf.ctf.RawCTF = mne.io.read_raw_ctf(str(raw_path), preload=True, verbose=False)
@@ -265,3 +273,22 @@ rule manual_checks_done:
         raise ValueError('Error! Preprocessing report file does not exist!\n'
                           'Create the manualCheck file manually\n'
                           f'File: {output}\n')
+
+
+rule common_channels:
+    input:
+        expand(linearly_filtered_template, zip, subject=subjects, session=sessions)
+    output:
+        common_channels_path
+    run:
+        common_channels = None
+        for raw_path in input:
+            raw = mne.io.read_raw_fif(input[0], verbose=False)
+            ch_names = set(raw.info['ch_names'])
+            if common_channels is None:
+                common_channels = ch_names
+            else:
+                # &= - set intersection
+                common_channels &= ch_names
+
+        pd.DataFrame(data=list(common_channels), columns=['common_channel']).to_csv(output[0], index=False)
