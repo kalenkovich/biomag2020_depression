@@ -11,3 +11,5 @@ dependencies:
   - conda-forge::papermill=2.2.2
   - pip:
     - git+git://github.com/kalenkovich/pybids.git@kalenkovich_make-_validate_file-work-on-windows#egg=pybids
+    - POT
+    - pyclustering
