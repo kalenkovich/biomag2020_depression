@@ -287,7 +287,7 @@ rule common_channels:
     run:
         common_channels = None
         for raw_path in input:
-            raw = mne.io.read_raw_fif(input[0], verbose=False)
+            raw = mne.io.read_raw_fif(raw_path, verbose=False)
             ch_names = set(raw.info['ch_names'])
             if common_channels is None:
                 common_channels = ch_names
@@ -306,7 +306,7 @@ rule create_eigenvalues:
         eigenvalues = eigenvalues_template
     run:
         data = mne.io.read_raw_fif(input.cleaned_data, preload=True)
-        common_channels = pd.read_csv(input.common_channels).values
+        common_channels = pd.read_csv(input.common_channels).common_channel.values.tolist()
         data = data.pick_channels(common_channels)
         data_array = data.get_data(picks='mag')
 
