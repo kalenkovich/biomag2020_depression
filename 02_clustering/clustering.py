@@ -9,7 +9,10 @@ import numpy as np
 import mne
 from pyclustering.cluster.kmeans import kmeans
 from pyclustering.cluster.center_initializer import random_center_initializer
+from pyclustering.utils.metric import distance_metric, type_metric
 import pandas as pd
+from scipy.stats import wasserstein_distance
+from scipy.spatial.distance import euclidean
 
 
 bids_root = Path(os.environ['biomag2020_data-bids'])
@@ -38,14 +41,16 @@ df.head()
 eigs_all = np.stack([np.load(f) for f in eigenvalue_files])
 
 
-k = 2
+k = 4
 initial_centers = random_center_initializer(eigs_all, k).initialize()
-kmeans_instance = kmeans(eigs_all, initial_centers)
+
+
+wasserstein_metric = distance_metric(type_metric.USER_DEFINED, func=wasserstein_distance)
+kmeans_instance = kmeans(data=eigs_all, initial_centers=initial_centers, metric=wasserstein_metric)
 
 kmeans_instance.process()
 clusters = kmeans_instance.get_clusters()
-final_centers = kmeans_instance.get_centers()
- 
+final_centers = kmeans_instance.get_centers() 
 
 
 cluster_assignment = pd.DataFrame(columns=['cluster_id', 'eigs_id'],
@@ -53,19 +58,25 @@ cluster_assignment = pd.DataFrame(columns=['cluster_id', 'eigs_id'],
                      for cluster_id, cluster in enumerate(clusters, 1)
                      for eigs_id in cluster
                     ]
-            )
+            ).sort_values(by='eigs_id').reset_index(drop=True)
 cluster_assignment.head()
 
+
+# Number of spectra per cluster.
 
 [len(c) for c in clusters]
 
 
-df = df.merge(cluster_assignment, on='eigs_id')
-df.head()
+# Number of subjects with distinct combinations of session clustering.
+
+df2 = df.merge(cluster_assignment, on='eigs_id')
+df2.head()
 
 
-df.groupby('subject').agg(dict(cluster_id=['min', 'max'])).value_counts().sort_index()
+df2.groupby('subject').agg(dict(cluster_id=['min', 'max'])).value_counts().sort_index()
 
 
-df.groupby('subject').agg(dict(cluster_id=['min', 'max'])).nunique(axis=1).value_counts()
+# Number of subject with sessions clustered into two clusters vs. one cluster.
+
+df2.groupby('subject').agg(dict(cluster_id=['min', 'max'])).nunique(axis=1).value_counts()
 
