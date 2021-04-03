@@ -54,10 +54,16 @@ M = np.asarray([[abs(bc2 - bc1) for bc1 in bin_centers] for bc2 in bin_centers])
 M /= M.max()
 
 
-# Convert samples to pmfs
+# Convert samples to pmfs/pdfs
 
-histograms = np.asarray([np.histogram(spectrum, bins=bins)[0] for spectrum in eigs_all])
-pmfs = (histograms.T / histograms.sum(axis=1)).T
+histogram_type = 'pmf'
+
+
+if histogram_type == 'pmf':
+    histograms = np.asarray([np.histogram(spectrum, bins=bins)[0] for spectrum in eigs_all])
+    data = (histograms.T / histograms.sum(axis=1)).T
+elif histogram_type == 'pdf':
+    data = np.asarray([np.histogram(spectrum, bins=bins, density=True)[0] for spectrum in eigs_all])
 
 
 # ## k-means
@@ -86,10 +92,10 @@ class KMeans(kmeans):
 k = 2
 
 
-initial_centers = random_center_initializer(pmfs, k, random_state=3).initialize()
+initial_centers = random_center_initializer(data, k, random_state=3).initialize()
 wasserstein_metric = distance_metric(type_metric.USER_DEFINED, 
                                      func=lambda x, y: wasserstein_distance(bin_centers, bin_centers, x, y))
-kmeans_instance = KMeans(data=pmfs, initial_centers=initial_centers, metric=wasserstein_metric)
+kmeans_instance = KMeans(data=data, initial_centers=initial_centers, metric=wasserstein_metric)
 
 kmeans_instance.M = M
 kmeans_instance.reg = 0.05
