@@ -13,6 +13,7 @@ from pyclustering.utils.metric import distance_metric, type_metric
 import pandas as pd
 from scipy.stats import wasserstein_distance
 from scipy.spatial.distance import euclidean
+import ot
 
 
 bids_root = Path(os.environ['biomag2020_data-bids'])
@@ -39,18 +40,64 @@ df.head()
 
 
 eigs_all = np.stack([np.load(f) for f in eigenvalue_files])
+eigs_all = eigs_all.clip(0, 2)
 
 
-k = 4
-initial_centers = random_center_initializer(eigs_all, k).initialize()
+n_bins = 100
+bins = np.quantile(eigs_all.flatten(), np.linspace(0, 1, n_bins + 1))
+bin_centers = (bins[:-1] + bins[1:]) / 2
 
 
-wasserstein_metric = distance_metric(type_metric.USER_DEFINED, func=wasserstein_distance)
-kmeans_instance = kmeans(data=eigs_all, initial_centers=initial_centers, metric=wasserstein_metric)
+# Matrix of distances between bins
+
+M = np.asarray([[abs(bc2 - bc1) for bc1 in bin_centers] for bc2 in bin_centers])
+M /= M.max()
+
+
+# Convert samples to pmfs
+
+histograms = np.asarray([np.histogram(spectrum, bins=bins)[0] for spectrum in eigs_all])
+pmfs = (histograms.T / histograms.sum(axis=1)).T
+
+
+# ## k-means
+
+class KMeans(kmeans):
+    def _kmeans__update_centers(self):
+        """!
+        @brief Calculate centers of clusters in line with contained objects.
+
+        @return (numpy.array) Updated centers.
+
+        """
+        numpy = np
+        
+        dimension = self._kmeans__pointer_data.shape[1]
+        centers = numpy.zeros((len(self._kmeans__clusters), dimension))
+
+        for index in range(len(self._kmeans__clusters)):
+            cluster_points = self._kmeans__pointer_data[self._kmeans__clusters[index], :]
+            # centers[index] = cluster_points.mean(axis=0)
+            centers[index] = ot.barycenter(cluster_points.T, M=self.M, reg=self.reg)
+            
+        return numpy.array(centers)
+
+
+k = 2
+
+
+initial_centers = random_center_initializer(pmfs, k, random_state=3).initialize()
+wasserstein_metric = distance_metric(type_metric.USER_DEFINED, 
+                                     func=lambda x, y: wasserstein_distance(bin_centers, bin_centers, x, y))
+kmeans_instance = KMeans(data=pmfs, initial_centers=initial_centers, metric=wasserstein_metric)
+
+kmeans_instance.M = M
+kmeans_instance.reg = 0.05
+
 
 kmeans_instance.process()
+final_centers = kmeans_instance.get_centers()
 clusters = kmeans_instance.get_clusters()
-final_centers = kmeans_instance.get_centers() 
 
 
 cluster_assignment = pd.DataFrame(columns=['cluster_id', 'eigs_id'],
