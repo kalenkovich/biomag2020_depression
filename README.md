@@ -29,3 +29,36 @@ Team (in the order of the increasing first name length):
 - Egor Levchenko
 - Kirill Stepanovskikh
 - Evgenii Kalenkovich
+
+
+## Preprocessing
+Raw files was downloaded from Globus system and save to `BIOMAG2020_comp_data`. By now, we have 3 problematic subjects 
+and info about them saved in `subject_problems_description.txt`.
+
+At first raw files were converted to BIDS compatible format and stored to `data_bids` folder using `01_switch-to-BIDS.ipynb`.
+All further steps were done on BIDS valid data and saved to `derivatives` subfolder in `data_bids`.
+
+Preprocessing is implemented in `Snakefile`
+The preprocessing steps:
+1. Downsample to 300 Hz and linear filtering: Notch at [60, 120] and high-pass at 0.3 Hz.
+2. ICA to remove eye and heart artifacts. Importantly, bad components are detected iteratively.
+
+All preprocessing info is saved to `html` report. Some notebooks and code are in `01_preprocessing` folder.
+Preprocessing html reports should be manually inspected to assess the quality of the preprocessing.
+
+## Clustering
+Calculate eigenvalues in `create_eigenvalues` rule. After that we make clustering using KMeans with a Wasserstein distance
+and Wasserstein barycenters. All necessary info about clustering algorithm is stored in `02_clustering/clustering.ipynb`
+
+## How reproduce the results?
+1. Git clone the repository
+2. Create conda environment using `conda-environment.yml` file
+3. Add path to original data and bids data to system environment variable 
+4. Run `01_switch-to-BIDS` (can skip)
+5. Run snakefile: `snakemake` (if you are in the same folder with `Snakefile`) or `snakemake -some_flag -PATH/Snakefile` 
+6. Run `clustering.ipynb`
+
+## Things to improve
+1. Update switch-to_BIDS to make true path (use env system variable)
+2. Nice to have some info about the files to be sure that they are the same between developers 
+(for example, `switch-to-BIDS` returns the same result)
