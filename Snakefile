@@ -9,6 +9,8 @@ import papermill as pm
 import yaml
 from bids import BIDSLayout
 from nbconvert import HTMLExporter
+from scipy.sparse import csgraph
+from numpy import linalg
 
 project_root = Path() / '..'
 original_data_dir = project_root / 'BIOMAG2020_comp_data'
@@ -42,6 +44,9 @@ template = os.path.join('sub-{subject}', 'ses-{session}', 'meg', 'sub-{subject}_
 preprocessing_report_template = os.path.join(preprocessing_pipeline_dir, 'sub-{subject}_task-restingstate')
 
 manual_check_template = os.path.join(preprocessing_pipeline_dir, 'sub-{subject}_task-restingstate_manualCheck.yml')
+
+eigenvalues_derivatives = derivatives_dir / '02_eigenvalues'
+eigenvalues_template = os.path.join(eigenvalues_derivatives, template + '-eigenvalues.npy')
 
 
 def find_ics(raw, ica, verbose=False):
@@ -96,33 +101,32 @@ common_channels_path = os.path.join(preprocessing_pipeline_dir, 'common_channels
 
 rule all:
     input:
-        expand(manual_check_template, subject=np.unique(subjects)),
-        expand(os.path.join(preprocessing_pipeline_dir, template + '-ics-removed.fif'),
-               zip, subject=subjects, session=sessions),
-        common_channels_path
-    output:
-        os.path.join(preprocessing_pipeline_dir, 'preprocessing-report_all.txt')
-    run:
-        n_successes = 0
-        problematic_subjects = list()
-        for check_result_path in input:
-            report_ok = is_report_ok(check_result_path)
-            n_successes += report_ok
-            if not report_ok:
-                path_parsed = bids.layout.parse_file_entities(check_result_path)
-                problematic_subjects.append(path_parsed['subject'])
-
-        with open(output[0], 'w') as f:
-            f.write(f'Files from {len(input)} participants were processed.\n')
-            f.write(f'From {n_successes} of them - successfully.\n')
-            f.write('\n')
-
-            if len(problematic_subjects) > 0:
-                f.write('Problematic subjects:\n')
-                for problematic_subject in problematic_subjects:
-                    f.write(problematic_subject + '\n')
-            else:
-                f.write('No problematic subjects.')
+        # expand(manual_check_template, subject=np.unique(subjects)),
+        expand(os.path.join(preprocessing_pipeline_dir, template + '-ics-removed.fif'), zip, subject=subjects, session=sessions),
+        expand(eigenvalues_template, zip, subject=subjects, session=sessions)
+    # output:
+    #     os.path.join(preprocessing_pipeline_dir, 'preprocessing-report_all.txt')
+    # run:
+    #     n_successes = 0
+    #     problematic_subjects = list()
+    #     for check_result_path in input:
+    #         report_ok = is_report_ok(check_result_path)
+    #         n_successes += report_ok
+    #         if not report_ok:
+    #             path_parsed = bids.layout.parse_file_entities(check_result_path)
+    #             problematic_subjects.append(path_parsed['subject'])
+    #
+    #     with open(output[0], 'w') as f:
+    #         f.write(f'Files from {len(input)} participants were processed.\n')
+    #         f.write(f'From {n_successes} of them - successfully.\n')
+    #         f.write('\n')
+    #
+    #         if len(problematic_subjects) > 0:
+    #             f.write('Problematic subjects:\n')
+    #             for problematic_subject in problematic_subjects:
+    #                 f.write(problematic_subject + '\n')
+    #         else:
+    #             f.write('No problematic subjects.')
 
 
 linearly_filtered_template = os.path.join(preprocessing_pipeline_dir, template + '.fif')
@@ -283,7 +287,7 @@ rule common_channels:
     run:
         common_channels = None
         for raw_path in input:
-            raw = mne.io.read_raw_fif(input[0], verbose=False)
+            raw = mne.io.read_raw_fif(raw_path, verbose=False)
             ch_names = set(raw.info['ch_names'])
             if common_channels is None:
                 common_channels = ch_names
@@ -292,3 +296,22 @@ rule common_channels:
                 common_channels &= ch_names
 
         pd.DataFrame(data=list(common_channels), columns=['common_channel']).to_csv(output[0], index=False)
+
+
+rule create_eigenvalues:
+    input:
+        cleaned_data = rules.remove_artifactual_ics.output[0],
+        common_channels = common_channels_path
+    output:
+        eigenvalues = eigenvalues_template
+    run:
+        data = mne.io.read_raw_fif(input.cleaned_data, preload=True)
+        common_channels = pd.read_csv(input.common_channels).common_channel.values.tolist()
+        data = data.pick_channels(common_channels)
+        data_array = data.get_data(picks='mag')
+
+        corr_mat = np.corrcoef(data_array)
+        corr_mat_pos = np.clip(corr_mat, 0, 1)
+        laplac_mat = csgraph.laplacian(corr_mat_pos, normed=True)
+        eigs = linalg.eigvals(laplac_mat)
+        np.save(output.eigenvalues, eigs)
