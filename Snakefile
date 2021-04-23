@@ -215,6 +215,13 @@ rule remove_artifactual_ics:
 
 
 def inputs_for_report(wildcards):
+    """
+    Finds all the files necessary for the `make_preproc_report` rule to make a preprocessing report for a single
+    subject. We had to put these in a function because the report file name does not have information about the session
+    ids.
+    :param wildcards: wildcards that triggered the rule, in this case just `subject`
+    :return: a dict with all the inputs for the `make_preproc_report` rule
+    """
     subject = wildcards.subject
 
     session1 = subjects_df.query('subject == @subject and session_number == 1').session_id.values[0]
@@ -242,6 +249,8 @@ def inputs_for_report(wildcards):
     )
 
 
+# Runs a parameterized notebook in `01_preprocessing/report.ipynb` using the `papermill` package. Then converts it to
+# HTML using `nbconvert`.
 rule make_preproc_report:
     input:
         unpack(inputs_for_report)
@@ -268,9 +277,14 @@ rule make_preproc_report:
         os.remove(str(ipynb_path))
 
 
+# This is a pseudo-rule in that it does not actually create any outputs - these are made manually after the inspection
+# of the preprocessing report. So, if all the reports have been checked and the corresponding files with the report
+# evaluations have been created then this rule won't be triggered at all because its outputs are already there and up to
+# date. If, however, the evaluations don't exist or they are older than the corresponding report, this rule will be
+# triggered and throw an error telling the user to create the manual file check.
 rule manual_checks_done:
     input:
-        file_list = rules.make_preproc_report.output[0]
+        report = rules.make_preproc_report.output[0]
     output:
         manual_check = manual_check_template
     run:
