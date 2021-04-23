@@ -293,6 +293,8 @@ rule manual_checks_done:
                           f'File: {output}\n')
 
 
+# We don't know how to compare eigenspectra for different sets of sensors and thus will later use only the sesnors that
+# are present in all the recordings. This rule gets us this list.
 rule common_channels:
     input:
         expand(linearly_filtered_template, zip, subject=subjects, session=sessions)
@@ -312,6 +314,9 @@ rule common_channels:
         pd.DataFrame(data=list(common_channels), columns=['common_channel']).to_csv(output[0], index=False)
 
 
+# Calculates the correlation matrix, its normalized Laplacian and then the eigenvalues.
+# One of the points of using the Laplacian is getting all the eigenvalues into the same 0-2 range where the spectra
+# can be compared.
 rule create_eigenvalues:
     input:
         cleaned_data = rules.remove_artifactual_ics.output[0],
@@ -320,11 +325,17 @@ rule create_eigenvalues:
         eigenvalues = eigenvalues_template
     run:
         data = mne.io.read_raw_fif(input.cleaned_data, preload=True)
+        # Channels that are present in all the recordings.
         common_channels = pd.read_csv(input.common_channels).common_channel.values.tolist()
         data = data.pick_channels(common_channels)
+        # Removes miscs and the compensation channels.
         data_array = data.get_data(picks='mag')
 
         corr_mat = np.corrcoef(data_array)
+        # We can't calculate a Laplacian if the sum in any of the rows is non-positive. One way to enforce this is to
+        # substitute 0 for any negative values. We lose all the negative correlation this way though. There are other
+        # options like taking only the negatives and flipping them, using the absolute values, etc. We should maybe
+        # try them.
         corr_mat_pos = np.clip(corr_mat, 0, 1)
         laplac_mat = csgraph.laplacian(corr_mat_pos, normed=True)
         eigs = linalg.eigvals(laplac_mat)
