@@ -61,9 +61,10 @@ eigenvalues_template = os.path.join(eigenvalues_derivatives, template + '-eigenv
 
 def find_ics(raw, ica, verbose=False):
     """
-    Finds ICA components associated with heart and eye artifacts. No ECG/EOG meant that we had to use whatever mne uses
-    for the heart artifacts (average over all sensors, I think) and two manually selected channels for the eye
-    artifacts: one for the vertical and one for the horizontal ones.
+    Finds ICA components associated with heart and eye artifacts.
+    There was no ECG/EOG in the data, therefore we couldn't use them to search for artifacts.
+    For heart artifacts, mne can do it without ECG.
+    For eye artifacts, we manually selected two channels: one for the vertical and one for the horizontal ones.
     :param raw: the raw recording file
     :param ica: an mne.preprocessing.ICA with components already fitted
     :param verbose: verbose level of the `find_bads_ecg` and `find_bads_eog` methods of ica
