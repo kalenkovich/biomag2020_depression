@@ -50,6 +50,8 @@ df.head()
 # ## Prepare data
 
 # Put all the eigenvalues into a single matrix.
+# 
+# Since the eigenvalues are distributed in [0, 2] (property of the Laplacian), we clip them to avoid rounding problems (for example, 2,0001).
 
 eigs_all = np.stack([np.load(f) for f in eigenvalue_files])
 eigs_all = eigs_all.clip(0, 2)
@@ -145,8 +147,8 @@ kmeans_instance = KMeans(data=data, initial_centers=initial_centers, metric=wass
 # The distance/cost matrix
 kmeans_instance.M = M
 
-# The regularization paramter
-# We don't how to set this parameter properly.
+# The regularization parameter
+# We don't know how to set this parameter properly.
 # What we do know is that larger values -> the barycenter depends less on the data.
 # Too large -> the barycenters are essentially the same for any set of spectra.
 kmeans_instance.reg = 0.05  
