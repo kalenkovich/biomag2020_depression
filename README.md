@@ -62,3 +62,5 @@ and Wasserstein barycenters. All necessary info about clustering algorithm is st
 1. Update switch-to_BIDS to make true path (use env system variable)
 2. Nice to have some info about the files to be sure that they are the same between developers 
 (for example, `switch-to-BIDS` returns the same result)
+3. Push `subject_problems_description.txt` file to GitHub repository.
+4. Add references (for example, an article about Laplacian and Wasserstein distance)

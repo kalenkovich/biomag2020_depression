@@ -67,7 +67,7 @@ def find_ics(raw, ica, verbose=False):
     :param raw: the raw recording file
     :param ica: an mne.preprocessing.ICA with components already fitted
     :param verbose: verbose level of the `find_bads_ecg` and `find_bads_eog` methods of ica
-    :return:
+    :return: list with indexes of heart and eye components
     """
     heart_ics, _ = ica.find_bads_ecg(raw, verbose=verbose)
     horizontal_eye_ics, _ = ica.find_bads_eog(raw, ch_name='MLF14-1609', verbose=verbose)
@@ -88,7 +88,7 @@ def find_ics_iteratively(raw, ica, verbose=False):
     :param raw: the raw recording file
     :param ica: an mne.preprocessing.ICA with components already fitted
     :param verbose: verbose level of the `find_bads_ecg` and `find_bads_eog` methods of ica
-    :return:
+    :return: list with indexes of components
     """
     ics = []
 
@@ -362,7 +362,7 @@ rule manual_checks_done:
                           f'File: {output}\n')
 
 
-# We don't know how to compare eigenspectra for different sets of sensors and thus will later use only the sesnors that
+# We don't know how to compare eigenspectra for different sets of sensors and thus will later use only the sensors that
 # are present in all the recordings. This rule gets us this list.
 rule common_channels:
     input:
